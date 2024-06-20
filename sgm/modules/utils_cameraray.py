@@ -7,7 +7,7 @@ from pytorch3d.renderer.implicit.raysampling import RayBundle as RayBundle
 from pytorch3d.renderer.camera_utils import join_cameras_as_batch
 from pytorch3d.renderer.cameras import PerspectiveCameras
 from scipy.spatial.transform import Rotation as R
-
+from scipy.spatial.transform import Slerp
 
 ############################# RAY BUNDLE UTILITIES #############################
 
@@ -394,11 +394,12 @@ def interpolatefocal(cam1, interp_start, interp_end, interp_step):
 
 def slerp(t, R1, R2):
     # 回転行列を四元数に変換
-    r1 = R.from_matrix(R1)
-    r2 = R.from_matrix(R2)
+    r = R.from_matrix([R1, R2])
+    # r2 = R.from_matrix(R2)
     
     # 四元数のSLERP補間
-    return R.slerp(t, [r1, r2]).as_matrix()
+    slerp = Slerp([0, 1], r)
+    return slerp([t]).as_matrix()
 
 def lerp(t, T1, T2):
     # 平行移動ベクトルの線形補間
