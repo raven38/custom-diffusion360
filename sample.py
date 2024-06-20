@@ -306,7 +306,7 @@ def sample(config,
                      "target_size_as_tuple_ref": torch.tensor([512, 512]).reshape(-1, 2),
                      "crop_coords_top_left_ref": torch.tensor([0, 0]).reshape(-1, 2),
                      }
-            if translateZ or translateY or translateX or translate_focal:
+            if translateZ or translateY or translateX or translate_focal or interp:
                 cameras = []
                 if translateY:
                     cameras += interpolate_translate_interpolate_yaxis(batch["pose"][0], interp_start, interp_end, interp_step)
@@ -314,7 +314,7 @@ def sample(config,
                     cameras += interpolate_translate_interpolate_zaxis(batch["pose"][0], interp_start, interp_end, interp_step)
                 elif translateX:
                     cameras += interpolate_translate_interpolate_xaxis(batch["pose"][0], interp_start, interp_end, interp_step)
-                elif translate_focal:
+                elif interp:
                     cameras += interpolate_cameras(batch["pose"][0], pose[(i+1)%num_images], num_interp)
                 else:
                     cameras += interpolatefocal(batch["pose"][0], interp_start, interp_end, interp_step)
