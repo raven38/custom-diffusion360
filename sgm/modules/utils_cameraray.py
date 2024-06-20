@@ -6,6 +6,7 @@ import torch
 from pytorch3d.renderer.implicit.raysampling import RayBundle as RayBundle
 from pytorch3d.renderer.camera_utils import join_cameras_as_batch
 from pytorch3d.renderer.cameras import PerspectiveCameras
+from scipy.spatial.transform import Rotation as R
 
 
 ############################# RAY BUNDLE UTILITIES #############################
@@ -384,6 +385,36 @@ def interpolatefocal(cam1, interp_start, interp_end, interp_step):
         cameras.append(PerspectiveCameras(R=cam1.R,
                                           T=cam1.T,
                                           focal_length=cam1.focal_length*i,
+                                          principal_point=cam1.principal_point,
+                                          image_size=512,
+                                          )
+                       )
+    return cameras
+
+
+def slerp(t, R1, R2):
+    # 回転行列を四元数に変換
+    r1 = R.from_matrix(R1)
+    r2 = R.from_matrix(R2)
+    
+    # 四元数のSLERP補間
+    return R.slerp(t, [r1, r2]).as_matrix()
+
+def lerp(t, T1, T2):
+    # 平行移動ベクトルの線形補間
+    return (1 - t) * T1 + t * T2
+
+
+def interpolate_cameras(cam1, cam2, num_interp):
+    cameras = []
+    for i in range(num_interp-1):
+        t = i / (num_interp - 1)  # 補間パラメータ
+        Rt = torch.from_numpy(slerp(t, cam1.R.cpu().numpy(), cam2.R.cpu().numpy())).float().to(cam1.device)
+        Tt = torch.from_numpy(lerp(t, cam1.T.cpu().numpy(), cam2.T.cpu().numpy())).float().to(cam1.device)
+
+        cameras.append(PerspectiveCameras(R=Rt,
+                                          T=Tt,
+                                          focal_length=cam1.focal_length,
                                           principal_point=cam1.principal_point,
                                           image_size=512,
                                           )

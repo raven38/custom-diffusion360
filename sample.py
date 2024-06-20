@@ -14,7 +14,7 @@ from pytorch3d.renderer.camera_utils import join_cameras_as_batch
 
 sys.path.append('./')
 from sgm.util import load_model_from_config
-from sgm.modules.utils_cameraray import interpolate_translate_interpolate_xaxis, interpolate_translate_interpolate_yaxis, interpolate_translate_interpolate_zaxis, interpolatefocal
+from sgm.modules.utils_cameraray import interpolate_translate_interpolate_xaxis, interpolate_translate_interpolate_yaxis, interpolate_translate_interpolate_zaxis, interpolatefocal, interpolate_cameras
 
 choices = []
 
@@ -209,10 +209,12 @@ def sample(config,
            interp_start=-0.2,
            interp_end=0.21,
            interp_step=0.4,
+           num_interp=5,
            translateY=False,
            translateZ=False,
            translateX=False,
            translate_focal=False,
+           interp=False,
            resolution=512,
            random_render_path=None,
            allround_render=False,
@@ -283,6 +285,8 @@ def sample(config,
         if translateZ or translateY or translateX or translate_focal:
             interp_reps = len(np.arange(interp_start, interp_end, interp_step))
             noise = torch.randn(1, 4, resolution // 8, resolution // 8).to('cuda').repeat(num_images*interp_reps, 1, 1, 1)
+        elif interp:
+            noise = torch.randn(1, 4, resolution // 8, resolution // 8).to('cuda').repeat(num_images*(num_interp-1), 1, 1, 1)
         else:
             noise = torch.randn(1, 4, resolution // 8, resolution // 8).to('cuda').repeat(num_images, 1, 1, 1)
 
@@ -310,6 +314,8 @@ def sample(config,
                     cameras += interpolate_translate_interpolate_zaxis(batch["pose"][0], interp_start, interp_end, interp_step)
                 elif translateX:
                     cameras += interpolate_translate_interpolate_xaxis(batch["pose"][0], interp_start, interp_end, interp_step)
+                elif translate_focal:
+                    cameras += interpolate_cameras(batch["pose"][0], pose[(i+1)%num_images], num_interp)
                 else:
                     cameras += interpolatefocal(batch["pose"][0], interp_start, interp_end, interp_step)
                 for j in range(len(cameras)):
@@ -354,6 +360,7 @@ def get_parser():
     parser.add_argument("--translateZ", action="store_true")
     parser.add_argument("--translateX", action="store_true")
     parser.add_argument("--translate_focal", action="store_true")
+    parser.add_argument("--interp", action="store_true")
     parser.add_argument("--num_images", type=int, default=5)
     parser.add_argument("--num_steps", type=int, default=50)
     parser.add_argument("--seed", type=int, default=30)
@@ -365,6 +372,7 @@ def get_parser():
     parser.add_argument("--interp_start", type=float, default=-0.2)
     parser.add_argument("--interp_end", type=float, default=0.21)
     parser.add_argument("--interp_step", type=float, default=0.4)
+    parser.add_argument("--num_interp", type=int, default=3)
     parser.add_argument("--allround_render", action="store_true")
     return parser
 
@@ -393,9 +401,11 @@ if __name__ == "__main__":
            interp_start=args.interp_start,
            interp_end=args.interp_end,
            interp_step=args.interp_step,
+           num_interp=args.num_interp,
            translateY=args.translateY,
            translateZ=args.translateZ,
            translateX=args.translateX,
            translate_focal=args.translate_focal,
+           interp=args.interp,
            allround_render=args.allround_render,
            )
